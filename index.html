@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>訂單排程系統</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <input type="text" id="newResourceName" placeholder="輸入新資源名稱 (例如: 機台 A)">
+    <button id="addResourceBtn" class="btn-secondary">新增資源</button>
+    </div>
+    <div id="resourceList" class="resource-tags">
+        <!-- Resources will be rendered here -->
+    </div>
+    </div>
+    </section>
+
+    <section class="card form-section">
+        <h2>新增訂單</h2>
+        <form id="orderForm">
+            <div class="form-group">
+                <label for="customerName">客戶名稱</label>
+                <input type="text" id="customerName" required placeholder="例如：王小明">
+            </div>
+
+            <div class="form-group">
+                <label for="orderDetails">訂單內容</label>
+                <input type="text" id="orderDetails" required placeholder="例如：洗車 + 打蠟">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="resource">使用資源/機台</label>
+                    <select id="resource" required>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="duration">預計工時 (輸入 1.5 或 1:30)</label>
+                    <div class="duration-controls">
+                        <input type="text" id="duration" required value="1" placeholder="例如: 1.5 或 1:30">
+                        <div class="quick-btns">
+                            <button type="button" onclick="adjustDuration(1)">+1時</button>
+                            <button type="button" onclick="adjustDuration(5)">+5時</button>
+                            <button type="button" onclick="adjustDuration(10)">+10時</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="startTime">開始時間</label>
+                <input type="datetime-local" id="startTime" required>
+            </div>
+
+            <button type="submit" class="btn-primary">加入排程</button>
+        </form>
+    </section>
+
+    <section class="card timeline-section">
+        <div class="section-header">
+            <h2>視覺化排程</h2>
+            <div class="timeline-toolbar">
+                <div class="date-nav">
+                    <button onclick="changeDate(-1)" class="btn-icon">&lt;</button>
+                    <span id="timelineDateDisplay">2023-11-24</span>
+                    <button onclick="changeDate(1)" class="btn-icon">&gt;</button>
+                    <button onclick="goToToday()" class="btn-sm">今天</button>
+                </div>
+                <div class="zoom-controls">
+                    <label for="zoomSlider">縮放:</label>
+                    <input type="range" id="zoomSlider" min="4" max="24" step="1" value="12">
+                    <span id="zoomValue">12小時</span>
+                </div>
+            </div>
+        </div>
+        <div class="timeline-container" id="timelineContainer">
+            <div class="timeline-header">
+                <!-- Time markers -->
+            </div>
+            <div id="timelineBody" class="timeline-body">
+                <!-- Gantt chart rows -->
+            </div>
+        </div>
+    </section>
+
+    <section class="card list-section">
+        <div class="list-header">
+            <h2>訂單列表</h2>
+            <span id="orderCount" class="badge">0</span>
+        </div>
+        <div id="orderList" class="order-list">
+            <!-- Orders will be rendered here -->
+            <div class="empty-state">目前沒有進行中的訂單</div>
+        </div>
+    </section>
+    </main>
+    </div>
+
+    <script src="app.js"></script>
+    </body>
+
+</html>
