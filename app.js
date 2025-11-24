@@ -2,7 +2,7 @@
 let orders = [];
 let resources = ['機台 A', '機台 B', '師傅 C']; // Default resources
 let timelineDate = new Date(); // Current date for timeline
-let timelineZoom = 12; // Hours to show
+let timelineZoom = 24; // Fixed 24 hours display
 let isHistoryMode = false; // Toggle for history view
 
 // DOM Elements
@@ -397,15 +397,20 @@ function showToast(message) {
     }, 3000);
 }
 
-function completeOrder(id) {
+function completeOrder(id, result = 'success') {
     const order = orders.find(o => o.id === id);
-    if (order && confirm(`確定要完成訂單 "${order.customerName}" 嗎？\n這將會從列表中移除，但保留在資料庫紀錄中。`)) {
+    const actionText = result === 'success' ? '完成' : '標記為異常';
+    if (order && confirm(`確定要${actionText}訂單 "${order.customerName}" 嗎？`)) {
         order.status = 'completed';
+        order.result = result;
         // Optimistic UI: Update immediately
         renderOrders();
         renderTimeline();
         saveData(true); // Background save
-        showToast('✅ 訂單已完成');
+        showToast(`✅ 訂單已${actionText}`);
+
+        const orderModal = document.getElementById('orderModal');
+        if (orderModal) orderModal.style.display = "none";
     }
 }
 
@@ -413,17 +418,17 @@ function addDuration(id) {
     const order = orders.find(o => o.id === id);
     if (!order) return;
 
-    const input = prompt(`請輸入要增加的分鐘數 (例如 30)：`, '30');
+    const input = prompt(`請輸入要增加的小時數 (例如 1, 2, 0.5)：`, '1');
     if (input === null) return;
 
-    const minutesToAdd = parseInt(input);
-    if (isNaN(minutesToAdd) || minutesToAdd === 0) {
+    const hoursToAdd = parseFloat(input);
+    if (isNaN(hoursToAdd) || hoursToAdd === 0) {
         alert('請輸入有效的數字');
         return;
     }
 
-    order.duration += minutesToAdd;
-    order.dueTime += (minutesToAdd * 60 * 1000);
+    order.duration += hoursToAdd;
+    order.dueTime += (hoursToAdd * 60 * 60 * 1000);
 
     // Re-sort orders as due time changed
     orders.sort((a, b) => a.dueTime - b.dueTime);
@@ -431,7 +436,11 @@ function addDuration(id) {
     renderOrders();
     renderTimeline();
     saveData(true); // Background save
-    showToast('✅ 工時已更新');
+    showToast(`✅ 工時已延長 ${hoursToAdd} 小時`);
+
+    // Close modal
+    const orderModal = document.getElementById('orderModal');
+    if (orderModal) orderModal.style.display = "none";
 }
 
 function deleteOrder(id) {
@@ -442,6 +451,10 @@ function deleteOrder(id) {
         renderTimeline();
         saveData(true); // Background save
         showToast('🗑️ 訂單已刪除');
+
+        // Close modal
+        const orderModal = document.getElementById('orderModal');
+        if (orderModal) orderModal.style.display = "none";
     }
 }
 
@@ -460,7 +473,7 @@ function renderOrders() {
     orderCount.textContent = displayOrders.length;
 
     // Update list header title based on mode
-    const listHeader = document.querySelector('.order-list h2');
+    const listHeader = document.querySelector('.list-header h2');
     if (listHeader) {
         listHeader.textContent = isHistoryMode ? '已完成訂單' : '進行中訂單';
     }
@@ -472,7 +485,7 @@ function renderOrders() {
 
     orderList.innerHTML = displayOrders.map(order => {
         const dateStr = new Date(order.dueTime).toLocaleString('zh-TW', { hour12: false });
-        const durHours = order.duration / 60;
+        const durHours = order.duration;
         const durStr = `${parseFloat(durHours.toFixed(1))} 小時`;
 
         let actionButtons = '';
@@ -481,19 +494,17 @@ function renderOrders() {
             // History Mode Buttons
             actionButtons = `
                 <button onclick="restoreOrder('${order.id}')" class="btn-action btn-restore">還原</button>
-                <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">永久刪除</button>
+                <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">刪除</button>
             `;
         } else {
-            // Active Mode Buttons
+            // Active Mode - Just show "查看詳情" button to open modal
             actionButtons = `
-                <button onclick="addDuration('${order.id}')" class="btn-action btn-extend">延時</button>
-                <button onclick="completeOrder('${order.id}')" class="btn-action btn-complete">完成</button>
-                <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">刪除</button>
+                <button onclick="openOrderModal('${order.id}')" class="btn-action btn-extend">查看詳情</button>
             `;
         }
 
         return `
-            <div class="order-item ${isHistoryMode ? 'history-item' : ''}">
+            <div class="order-item ${isHistoryMode ? 'history-item' : ''}" onclick="openOrderModal('${order.id}')" style="cursor: pointer;">
                 <div class="order-info">
                     <h3>${order.customerName} <span class="tag">${order.resource}</span></h3>
                     <div class="order-details">${order.orderDetails}</div>
@@ -502,7 +513,7 @@ function renderOrders() {
                         <span>預計完成：${dateStr}</span>
                     </div>
                 </div>
-                <div class="order-actions">
+                <div class="order-actions" onclick="event.stopPropagation()">
                     ${!isHistoryMode ? `<div id="timer-${order.id}" class="timer">計算中...</div>` : ''}
                     <div class="action-buttons">
                         ${actionButtons}
@@ -577,7 +588,9 @@ function sendNotification(title, body) {
 }
 
 function requestNotificationPermission() {
-    if ('Notification' in window) {
+    if ('Notification' in window && Notification.permission === 'default') {
+        // Only request if user hasn't been asked before
+        // This will be called when user adds their first order
         Notification.requestPermission();
     }
 }
@@ -652,18 +665,26 @@ function renderTimeline() {
     }
     html += '</div>';
 
-    // Rows per resource
-    resources.forEach(resource => {
-        // Filter active orders for timeline
-        const resourceOrders = orders.filter(o => o.resource === resource && o.status !== 'completed');
+    // Rows per Customer (Group by Customer)
+    // Get unique customers with active orders
+    const activeOrders = orders.filter(o => o.status !== 'completed');
+    const uniqueCustomers = [...new Set(activeOrders.map(o => o.customerName))].sort();
+
+    if (uniqueCustomers.length === 0) {
+        html += `<div class="timeline-row"><div class="timeline-label" style="width: 100%; text-align: center; padding: 1rem;">尚無進行中的訂單</div></div>`;
+    }
+
+    uniqueCustomers.forEach(customer => {
+        // Filter active orders for this customer
+        const customerOrders = activeOrders.filter(o => o.customerName === customer);
 
         html += `
             <div class="timeline-row">
-                <div class="timeline-label">${resource}</div>
+                <div class="timeline-label">${customer}</div>
                 <div class="timeline-track">
         `;
 
-        resourceOrders.forEach(order => {
+        customerOrders.forEach(order => {
             // Check if order overlaps with this day
             const orderStart = order.startTime;
             const orderEnd = order.dueTime;
@@ -692,9 +713,15 @@ function renderTimeline() {
                 widthPercent = 100 - startPercent;
             }
 
+            const isOverdue = order.dueTime < Date.now() && order.status !== 'completed';
+            const overdueClass = isOverdue ? 'overdue' : '';
+
             html += `
-                <div class="timeline-block" style="left: ${startPercent}%; width: ${widthPercent}%;" title="${order.customerName}: ${order.orderDetails} (${formatTime(orderStart)} - ${formatTime(orderEnd)})">
-                    ${order.customerName}
+                <div class="timeline-block ${overdueClass}" 
+                     style="left: ${startPercent}%; width: ${widthPercent}%; cursor: pointer;" 
+                     title="點擊查看詳情"
+                     onclick="openOrderModal('${order.id}')">
+                    ${order.resource} - ${order.orderDetails}
                 </div>
             `;
         });
@@ -743,6 +770,7 @@ window.changeZoom = changeZoom;
 window.addTag = addTag;
 window.selectResource = selectResource;
 window.switchTab = switchTab;
+window.openOrderModal = openOrderModal;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -797,4 +825,78 @@ function initScrollSpy() {
     sections.forEach(section => {
         observer.observe(section);
     });
+
+    // Add click handlers to nav links for immediate active state update
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Remove active from all links
+            navLinks.forEach(l => l.classList.remove('active'));
+            // Add active to clicked link
+            link.classList.add('active');
+        });
+    });
 }
+
+// --- Order Details Modal ---
+const orderModal = document.getElementById('orderModal');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+const modalCompleteBtn = document.getElementById('modalCompleteBtn');
+const closeModalSpan = document.querySelector('.close-modal');
+
+if (closeModalSpan) {
+    closeModalSpan.onclick = function () {
+        orderModal.style.display = "none";
+    }
+}
+
+window.onclick = function (event) {
+    if (event.target == orderModal) {
+        orderModal.style.display = "none";
+    }
+}
+
+function openOrderModal(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    modalTitle.textContent = `訂單詳情 - ${order.customerName}`;
+
+    const startTimeStr = new Date(order.startTime).toLocaleString('zh-TW', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const endTimeStr = new Date(order.dueTime).toLocaleString('zh-TW', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    modalBody.innerHTML = `
+        <p><strong>客戶名稱:</strong> ${order.customerName}</p>
+        <p><strong>訂單內容:</strong> ${order.orderDetails}</p>
+        <p><strong>分配資源:</strong> ${order.resource}</p>
+        <p><strong>開始時間:</strong> ${startTimeStr}</p>
+        <p><strong>結束時間:</strong> ${endTimeStr}</p>
+        <p><strong>預估工時:</strong> ${order.duration} 小時</p>
+        ${order.result ? `<p><strong>結果:</strong> ${order.result === 'success' ? '✅ 成功' : '❌ 異常'}</p>` : ''}
+    `;
+
+    // Update buttons dynamically
+    const modalActions = document.querySelector('.modal-actions');
+    if (modalActions) {
+        if (order.status === 'completed') {
+            // For completed orders, only show delete
+            modalActions.innerHTML = `
+                <button onclick="deleteOrder('${orderId}')" class="btn-delete btn-action">刪除</button>
+            `;
+        } else {
+            // For active orders, show all actions
+            modalActions.innerHTML = `
+                <button onclick="deleteOrder('${orderId}')" class="btn-delete btn-action">刪除</button>
+                <button onclick="addDuration('${orderId}')" class="btn-extend btn-action">延長時間</button>
+                <button onclick="completeOrder('${orderId}', 'fail')" class="btn-action" style="background-color: var(--warning-color)">異常</button>
+                <button onclick="completeOrder('${orderId}', 'success')" class="btn-complete btn-action">完成</button>
+            `;
+        }
+    }
+
+    orderModal.style.display = "block";
+}
+
+// Expose to global scope
+window.openOrderModal = openOrderModal;

@@ -6,177 +6,167 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>訂單排程系統</title>
     <link rel="stylesheet" href="style.css">
-    <!DOCTYPE html>
-    <html lang="zh-TW">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>訂單排程系統</title>
-        <link rel="stylesheet" href="style.css">
-        <!DOCTYPE html>
-        <html lang="zh-TW">
+<body>
+    <div class="app-layout">
+        <nav class="sidebar">
+            <div class="nav-brand">OS</div>
+            <a href="#form-section" class="nav-link active" title="管理">
+                <span class="icon">📝</span>
+                <span class="text">管理</span>
+            </a>
+            <a href="#timeline-section" class="nav-link" title="排程">
+                <span class="icon">📅</span>
+                <span class="text">排程</span>
+            </a>
+            <a href="#list-section" class="nav-link" title="列表">
+                <span class="icon">📋</span>
+                <span class="text">列表</span>
+            </a>
+        </nav>
 
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>訂單排程系統</title>
-            <link rel="stylesheet" href="style.css">
-            <!DOCTYPE html>
-            <html lang="zh-TW">
+        <main class="main-content">
+            <div class="app-container">
+                <header>
+                    <h1>訂單排程系統</h1>
+                    <p class="subtitle">高效管理您的訂單與資源</p>
+                    <div id="syncStatus" class="sync-status">☁️ 已同步</div>
+                </header>
 
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>訂單排程系統</title>
-                <link rel="stylesheet" href="style.css">
-                <!-- Google Fonts -->
-                <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-                    rel="stylesheet">
-            </head>
-
-        <body>
-            <div class="app-layout">
-                <nav class="sidebar">
-                    <div class="nav-brand">OS</div>
-                    <a href="#form-section" class="nav-link active" title="管理">
-                        <span class="icon">📝</span>
-                        <span class="text">管理</span>
-                    </a>
-                    <a href="#timeline-section" class="nav-link" title="排程">
-                        <span class="icon">📅</span>
-                        <span class="text">排程</span>
-                    </a>
-                    <a href="#list-section" class="nav-link" title="列表">
-                        <span class="icon">📋</span>
-                        <span class="text">列表</span>
-                    </a>
-                </nav>
-
-                <main class="main-content">
-                    <div class="app-container">
-                        <header>
-                            <h1>訂單排程系統</h1>
-                            <p class="subtitle">高效管理您的訂單與資源</p>
-                            <div id="syncStatus" class="sync-status">☁️ 已同步</div>
-                        </header>
-
-                        <!-- Combined Order & Resource Section -->
-                        <section id="form-section" class="card form-section">
-                            <div class="tab-header">
-                                <button class="tab-btn active" onclick="switchTab('order')">新增訂單</button>
-                                <button class="tab-btn" onclick="switchTab('resource')">資源管理</button>
-                            </div>
-
-                            <!-- Tab 1: New Order -->
-                            <div id="tab-order" class="tab-content active">
-                                <form id="orderForm">
-                                    <div class="form-group">
-                                        <label for="customerName">客戶名稱</label>
-                                        <input type="text" id="customerName" required placeholder="例如：王小明">
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="orderDetails">訂單內容</label>
-                                        <input type="text" id="orderDetails" required placeholder="例如：CNC 加工 - 批號 123">
-                                        <div class="quick-tags">
-                                            <button type="button" class="btn-tag" onclick="addTag('包等級')">包等級</button>
-                                            <button type="button" class="btn-tag" onclick="addTag('包時數')">包時數</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>選擇資源 (機台/人員)</label>
-                                        <div id="resource-options" class="resource-options-grid">
-                                            <!-- Radio buttons injected by JS -->
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="startTime">開始時間</label>
-                                            <input type="datetime-local" id="startTime" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="duration">預估工時 (小時)</label>
-                                            <div class="duration-input-group">
-                                                <input type="text" id="duration" required placeholder="例如 1.5 或 1:30"
-                                                    value="1">
-                                                <div class="quick-duration-buttons">
-                                                    <button type="button" onclick="adjustDuration(1)">+1h</button>
-                                                    <button type="button" onclick="adjustDuration(5)">+5h</button>
-                                                    <button type="button" onclick="adjustDuration(10)">+10h</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button type="submit" class="btn-primary">加入排程</button>
-                                </form>
-                            </div>
-
-                            <!-- Tab 2: Resource Management -->
-                            <div id="tab-resource" class="tab-content">
-                                <div class="resource-management-panel">
-                                    <div class="input-group">
-                                        <input type="text" id="newResourceName" placeholder="輸入新資源名稱 (例如: 機台 A)">
-                                        <button id="addResourceBtn" class="btn-secondary">新增資源</button>
-                                    </div>
-                                    <div id="resourceList" class="resource-tags">
-                                        <!-- Resources will be rendered here -->
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Timeline Visualization -->
-                        <section id="timeline-section" class="card timeline-section">
-                            <div class="section-header">
-                                <h2>視覺化排程</h2>
-                                <div class="timeline-toolbar">
-                                    <div class="date-nav">
-                                        <button onclick="changeDate(-1)" class="btn-icon">◀</button>
-                                        <span id="timelineDateDisplay">2023年11月24日 週五</span>
-                                        <button onclick="changeDate(1)" class="btn-icon">▶</button>
-                                        <button onclick="goToToday()" class="btn-sm">今天</button>
-                                    </div>
-                                    <div class="zoom-control">
-                                        <label for="zoomSlider">縮放</label>
-                                        <input type="range" id="zoomSlider" min="4" max="24" value="12" step="2">
-                                        <span id="zoomValue">12小時</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="timelineContainer" class="timeline-container">
-                                <div id="timelineBody">
-                                    <!-- Gantt chart rows -->
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Order List -->
-                        <section id="list-section" class="card list-section">
-                            <div class="list-header">
-                                <h2>訂單列表</h2>
-                                <div class="list-controls">
-                                    <button id="historyBtn" class="btn-secondary btn-sm"
-                                        onclick="toggleHistoryMode()">📜
-                                        歷史紀錄</button>
-                                    <span id="orderCount" class="badge">0</span>
-                                </div>
-                            </div>
-                            <div id="orderList" class="order-list">
-                                <!-- Orders will be rendered here -->
-                                <div class="empty-state">目前沒有進行中的訂單</div>
-                            </div>
-                        </section>
+                <!-- Combined Order & Resource Section -->
+                <section id="form-section" class="card form-section">
+                    <div class="tab-header">
+                        <button class="tab-btn active" onclick="switchTab('order')">新增訂單</button>
+                        <button class="tab-btn" onclick="switchTab('resource')">資源管理</button>
                     </div>
-                </main>
+
+                    <!-- Tab 1: New Order -->
+                    <div id="tab-order" class="tab-content active">
+                        <form id="orderForm">
+                            <!-- Row 1: Customer Name and Order Details -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="customerName">客戶名稱</label>
+                                    <input type="text" id="customerName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderDetails">訂單內容</label>
+                                    <input type="text" id="orderDetails" required>
+                                    <!-- Quick Tags directly under Order Details -->
+                                    <div class="quick-tags" style="margin-top: 0.5rem;">
+                                        <button type="button" onclick="document.getElementById('orderDetails').value=''"
+                                            class="tag-btn">清除</button>
+                                        <button type="button" onclick="addTag('包小時')" class="tag-btn">包小時</button>
+                                        <button type="button" onclick="addTag('包等級')" class="tag-btn">包等級</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Start Time and Duration -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="startTime">開始時間</label>
+                                    <input type="datetime-local" id="startTime" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="duration">預估工時 (小時)</label>
+                                    <div class="duration-input-group">
+                                        <input type="text" id="duration" required value="1">
+                                        <div class="quick-duration-buttons">
+                                            <button type="button" onclick="adjustDuration(1)">+1h</button>
+                                            <button type="button" onclick="adjustDuration(5)">+5h</button>
+                                            <button type="button" onclick="adjustDuration(10)">+10h</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Resource Selection -->
+                            <div class="form-group">
+                                <label>選擇資源 (機台/人員)</label>
+                                <div id="resource-options" class="resource-options-grid">
+                                    <!-- Radio buttons injected by JS -->
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary">加入排程</button>
+                        </form>
+                    </div>
+
+                    <!-- Tab 2: Resource Management -->
+                    <div id="tab-resource" class="tab-content">
+                        <div class="resource-management-panel">
+                            <div class="input-group">
+                                <input type="text" id="newResourceName" placeholder="輸入新資源名稱 (例如: 機台 A)">
+                                <button id="addResourceBtn" class="btn-secondary">新增資源</button>
+                            </div>
+                            <div id="resourceList" class="resource-tags">
+                                <!-- Resources will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Timeline Visualization -->
+                <section id="timeline-section" class="card timeline-section">
+                    <div class="section-header">
+                        <h2>📅 視覺化排程</h2>
+                        <div class="timeline-toolbar">
+                            <div class="date-nav">
+                                <button onclick="changeDate(-1)" class="btn-icon" title="前一天">◀</button>
+                                <span id="timelineDateDisplay">2023年11月24日 週五</span>
+                                <button onclick="changeDate(1)" class="btn-icon" title="後一天">▶</button>
+                                <button onclick="goToToday()" class="btn-sm">今天</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="timelineContainer" class="timeline-container">
+                        <div id="timelineBody">
+                            <!-- Gantt chart rows -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Order List -->
+                <section id="list-section" class="card list-section">
+                    <div class="list-header">
+                        <h2>訂單列表</h2>
+                        <div class="list-controls">
+                            <button id="historyBtn" class="btn-secondary btn-sm" onclick="toggleHistoryMode()">📜
+                                歷史紀錄</button>
+                            <span id="orderCount" class="badge">0</span>
+                        </div>
+                    </div>
+                    <div id="orderList" class="order-list">
+                        <!-- Orders will be rendered here -->
+                        <div class="empty-state">目前沒有進行中的訂單</div>
+                    </div>
+                </section>
             </div>
+        </main>
+    </div>
 
-            <script src="app.js"></script>
-        </body>
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="modalTitle">訂單詳情</h2>
+            <div id="modalBody">
+                <!-- Details injected by JS -->
+            </div>
+            <div class="modal-actions">
+                <button id="modalDeleteBtn" class="btn-delete btn-action">刪除訂單</button>
+                <button id="modalCompleteBtn" class="btn-complete btn-action">完成訂單</button>
+            </div>
+        </div>
+    </div>
 
-        </html>
+    <script src="app.js"></script>
+</body>
+
+</html>
