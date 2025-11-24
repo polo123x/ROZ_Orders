@@ -79,12 +79,17 @@ async function loadData() {
     }
 }
 
-async function saveData() {
+async function saveData(isBackground = false) {
     // Save Resources to LocalStorage (Backup)
     localStorage.setItem('resources', JSON.stringify(resources));
 
     // Save Orders and Resources to Google Sheet
-    showLoading(true, '儲存中...');
+    if (!isBackground) {
+        showLoading(true, '儲存中...');
+    } else {
+        showBackgroundSync(true);
+    }
+
     try {
         const payload = {
             orders: orders,
@@ -113,9 +118,19 @@ async function saveData() {
 
     } catch (error) {
         console.error('Save error:', error);
-        alert('儲存失敗：' + error.message);
+        if (!isBackground) {
+            alert('儲存失敗：' + error.message);
+        } else {
+            // In background mode, maybe show a small toast error
+            showToast('⚠️ 雲端同步失敗，請檢查網路');
+        }
     } finally {
-        showLoading(false);
+        if (!isBackground) {
+            showLoading(false);
+        } else {
+            showBackgroundSync(false);
+        }
+        // Re-render to ensure consistency, but Optimistic UI already rendered
         renderOrders();
         renderTimeline();
         renderResourceOptions();
@@ -137,6 +152,21 @@ function showLoading(isLoading, msg = '讀取中...') {
     }
 }
 
+function showBackgroundSync(isSyncing) {
+    const statusEl = document.getElementById('syncStatus');
+    if (!statusEl) return;
+
+    if (isSyncing) {
+        statusEl.textContent = '☁️ 同步中...';
+        statusEl.style.opacity = '0.8';
+    } else {
+        statusEl.textContent = '☁️ 已同步';
+        setTimeout(() => {
+            statusEl.style.opacity = '0.5';
+        }, 2000);
+    }
+}
+
 // --- Resource Management ---
 
 function addResource() {
@@ -144,18 +174,18 @@ function addResource() {
     if (name && !resources.includes(name)) {
         resources.push(name);
         newResourceInput.value = '';
-        saveData();
         renderResources();
         renderResourceOptions();
+        saveData(true); // Background save
     }
 }
 
 function removeResource(name) {
     if (confirm(`確定要刪除資源 "${name}" 嗎？`)) {
         resources = resources.filter(r => r !== name);
-        saveData();
         renderResources();
         renderResourceOptions();
+        saveData(true); // Background save
     }
 }
 
@@ -275,7 +305,10 @@ function restoreOrder(id) {
     const order = orders.find(o => o.id === id);
     if (order && confirm(`確定要還原訂單 "${order.customerName}" 嗎？`)) {
         order.status = 'active';
-        saveData();
+        renderOrders();
+        renderTimeline();
+        saveData(true); // Background save
+        showToast('✅ 訂單已還原');
     }
 }
 
@@ -324,7 +357,13 @@ function handleAddOrder(e) {
     orders.push(newOrder);
     orders.sort((a, b) => a.dueTime - b.dueTime);
 
-    saveData();
+    // Optimistic UI: Render immediately
+    renderOrders();
+    renderTimeline();
+
+    // Background Save
+    saveData(true);
+
     orderForm.reset();
     resetFormTime();
     // Clear selection style
@@ -362,7 +401,11 @@ function completeOrder(id) {
     const order = orders.find(o => o.id === id);
     if (order && confirm(`確定要完成訂單 "${order.customerName}" 嗎？\n這將會從列表中移除，但保留在資料庫紀錄中。`)) {
         order.status = 'completed';
-        saveData();
+        // Optimistic UI: Update immediately
+        renderOrders();
+        renderTimeline();
+        saveData(true); // Background save
+        showToast('✅ 訂單已完成');
     }
 }
 
@@ -385,13 +428,20 @@ function addDuration(id) {
     // Re-sort orders as due time changed
     orders.sort((a, b) => a.dueTime - b.dueTime);
 
-    saveData();
+    renderOrders();
+    renderTimeline();
+    saveData(true); // Background save
+    showToast('✅ 工時已更新');
 }
 
 function deleteOrder(id) {
     if (confirm('【警告】確定要永久刪除這筆訂單嗎？\n此動作無法復原，資料將從資料庫中完全移除。')) {
         orders = orders.filter(o => o.id !== id);
-        saveData();
+        // Optimistic UI: Remove immediately
+        renderOrders();
+        renderTimeline();
+        saveData(true); // Background save
+        showToast('🗑️ 訂單已刪除');
     }
 }
 
@@ -662,6 +712,23 @@ function formatTime(ms) {
     return new Date(ms).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+// --- Tabbed Interface ---
+function switchTab(tabId) {
+    // Update Buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('onclick').includes(tabId)) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Update Content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+}
+
 // Expose functions to global scope for HTML onclick
 window.removeResource = removeResource;
 window.deleteOrder = deleteOrder;
@@ -675,12 +742,14 @@ window.goToToday = goToToday;
 window.changeZoom = changeZoom;
 window.addTag = addTag;
 window.selectResource = selectResource;
+window.switchTab = switchTab;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     renderResources();
     renderResourceOptions();
     requestNotificationPermission();
+    initScrollSpy();
 
     // Set default start time to now
     resetFormTime();
@@ -701,4 +770,31 @@ if (zoomSlider) {
 }
 if (timelineContainer) {
     timelineContainer.addEventListener('wheel', handleTimelineWheel, { passive: false });
+}
+
+// --- Scroll Spy ---
+function initScrollSpy() {
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.getAttribute('id');
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${id}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, {
+        threshold: 0.3,
+        rootMargin: "-10% 0px -50% 0px"
+    });
+
+    sections.forEach(section => {
+        observer.observe(section);
+    });
 }
