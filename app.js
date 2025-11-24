@@ -3,6 +3,7 @@ let orders = [];
 let resources = ['機台 A', '機台 B', '師傅 C']; // Default resources
 let timelineDate = new Date(); // Current date for timeline
 let timelineZoom = 12; // Hours to show
+let isHistoryMode = false; // Toggle for history view
 
 // DOM Elements
 const orderForm = document.getElementById('orderForm');
@@ -17,34 +18,7 @@ const timelineBody = document.getElementById('timelineBody');
 const timelineDateDisplay = document.getElementById('timelineDateDisplay');
 const zoomSlider = document.getElementById('zoomSlider');
 const zoomValue = document.getElementById('zoomValue');
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
-    renderResources();
-    updateResourceSelect();
-    requestNotificationPermission();
-
-    // Set default start time to now
-    resetFormTime();
-
-    // Start timer loop
-    setInterval(updateTimers, 1000);
-
-    // Initial render
-    updateDateDisplay();
-    renderTimeline();
-});
-
-// Event Listeners
-if (orderForm) orderForm.addEventListener('submit', handleAddOrder);
-if (addResourceBtn) addResourceBtn.addEventListener('click', addResource);
-if (zoomSlider) {
-    zoomSlider.addEventListener('input', handleZoomInput);
-}
-if (timelineContainer) {
-    timelineContainer.addEventListener('wheel', handleTimelineWheel, { passive: false });
-}
+const historyBtn = document.getElementById('historyBtn');
 
 // --- Data Management (Cloud Sync) ---
 
@@ -53,51 +27,76 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzeJnGZgcjlIdUfFlCH6gkK
 async function loadData() {
     showLoading(true);
     try {
-        // Load Resources from LocalStorage (Settings)
+        console.log('Starting loadData...');
+        // Load Resources from LocalStorage (Fallback)
         const storedResources = localStorage.getItem('resources');
         if (storedResources) resources = JSON.parse(storedResources);
 
-        // Load Orders from Google Sheet
+        // Load Orders and Resources from Google Sheet
+        console.log('Fetching from URL:', API_URL);
         const response = await fetch(`${API_URL}?action=read`);
+        console.log('Response status:', response.status);
+
         const result = await response.json();
+        console.log('Raw result from cloud:', result);
 
         if (result.status === 'success') {
             orders = result.data;
-            // Convert timestamps back to numbers if needed (JSON might return strings)
+
+            // Update Resources from Cloud if available
+            if (result.resources && Array.isArray(result.resources)) {
+                resources = result.resources;
+                // Update local storage to keep in sync
+                localStorage.setItem('resources', JSON.stringify(resources));
+                renderResources();
+                renderResourceOptions();
+            }
+
+            // Convert timestamps back to numbers if needed
             orders.forEach(o => {
-                o.startTime = Number(o.startTime);
-                o.dueTime = Number(o.dueTime);
+                let start = Number(o.startTime);
+                if (isNaN(start)) start = new Date(o.startTime).getTime();
+                o.startTime = start;
+
+                let due = Number(o.dueTime);
+                if (isNaN(due)) due = new Date(o.dueTime).getTime();
+                o.dueTime = due;
+
                 o.duration = Number(o.duration);
             });
             renderOrders();
             renderTimeline();
+            renderResourceOptions();
         } else {
             console.error('Cloud load error:', result.message);
-            alert('無法從雲端讀取資料');
+            alert('無法從雲端讀取資料: ' + result.message);
         }
     } catch (error) {
         console.error('Load error:', error);
-        alert('連線錯誤，無法讀取資料');
+        alert('連線錯誤，無法讀取資料 (請看 Console)');
     } finally {
         showLoading(false);
     }
 }
 
 async function saveData() {
-    // Save Resources to LocalStorage
+    // Save Resources to LocalStorage (Backup)
     localStorage.setItem('resources', JSON.stringify(resources));
 
-    // Save Orders to Google Sheet
+    // Save Orders and Resources to Google Sheet
     showLoading(true, '儲存中...');
     try {
-        // Fix: Append action=save to URL so GAS knows it's a save request
-        // Fix: Send orders array directly as body so GAS can map it immediately
+        const payload = {
+            orders: orders,
+            resources: resources
+        };
+
         const response = await fetch(`${API_URL}?action=save`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain;charset=utf-8',
             },
-            body: JSON.stringify(orders)
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -119,6 +118,7 @@ async function saveData() {
         showLoading(false);
         renderOrders();
         renderTimeline();
+        renderResourceOptions();
     }
 }
 
@@ -146,7 +146,7 @@ function addResource() {
         newResourceInput.value = '';
         saveData();
         renderResources();
-        updateResourceSelect();
+        renderResourceOptions();
     }
 }
 
@@ -155,7 +155,7 @@ function removeResource(name) {
         resources = resources.filter(r => r !== name);
         saveData();
         renderResources();
-        updateResourceSelect();
+        renderResourceOptions();
     }
 }
 
@@ -169,12 +169,53 @@ function renderResources() {
     `).join('');
 }
 
-function updateResourceSelect() {
-    if (!resourceSelect) return;
-    resourceSelect.innerHTML = resources.map(r => `<option value="${r}">${r}</option>`).join('');
+function renderResourceOptions() {
+    const container = document.getElementById('resource-options');
+    if (!container) return;
+
+    // Get currently active orders to determine status
+    const now = Date.now();
+    const activeOrders = orders.filter(o => o.status !== 'completed' && o.startTime <= now && o.dueTime > now);
+    const busyResources = activeOrders.map(o => o.resource);
+
+    container.innerHTML = resources.map(r => {
+        const isBusy = busyResources.includes(r);
+        const statusClass = isBusy ? 'busy' : 'idle';
+        const statusText = isBusy ? '使用中' : '空閒';
+
+        return `
+        <label class="resource-option-card" onclick="selectResource(this)">
+            <input type="radio" name="resource" value="${r}" required>
+            <span class="resource-name">${r}</span>
+            <div class="status-indicator ${statusClass}" title="${statusText}"></div>
+        </label>
+    `}).join('');
+}
+
+function selectResource(card) {
+    // Remove selected class from all cards
+    document.querySelectorAll('.resource-option-card').forEach(c => c.classList.remove('selected'));
+    // Add to clicked card
+    card.classList.add('selected');
+    // Check the radio button inside
+    const radio = card.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
 }
 
 // --- Order Management ---
+
+function addTag(tag) {
+    const input = document.getElementById('orderDetails');
+    if (!input) return;
+
+    const currentVal = input.value;
+    if (currentVal) {
+        input.value = currentVal + ' ' + tag;
+    } else {
+        input.value = tag;
+    }
+    input.focus();
+}
 
 function parseDurationInput(value) {
     if (!value) return 0;
@@ -219,12 +260,40 @@ function resetFormTime() {
     if (durationInput) durationInput.value = "1";
 }
 
+function toggleHistoryMode() {
+    isHistoryMode = !isHistoryMode;
+
+    if (historyBtn) {
+        historyBtn.textContent = isHistoryMode ? '🔙 返回列表' : '📜 歷史紀錄';
+        historyBtn.classList.toggle('active', isHistoryMode);
+    }
+
+    renderOrders();
+}
+
+function restoreOrder(id) {
+    const order = orders.find(o => o.id === id);
+    if (order && confirm(`確定要還原訂單 "${order.customerName}" 嗎？`)) {
+        order.status = 'active';
+        saveData();
+    }
+}
+
 function handleAddOrder(e) {
     e.preventDefault();
 
     const customerName = document.getElementById('customerName').value;
     const orderDetails = document.getElementById('orderDetails').value;
-    const resource = document.getElementById('resource').value;
+
+    // Get selected resource from radio buttons
+    const selectedResource = document.querySelector('input[name="resource"]:checked');
+    const resource = selectedResource ? selectedResource.value : null;
+
+    if (!resource) {
+        alert('請選擇一個資源 (機台/人員)');
+        return;
+    }
+
     const startTimeStr = document.getElementById('startTime').value;
 
     // Parse Duration (Flexible)
@@ -247,6 +316,7 @@ function handleAddOrder(e) {
         startTime,
         duration: durationInMinutes,
         dueTime,
+        dueTime,
         notified: false,
         status: 'active' // Default status
     };
@@ -257,6 +327,35 @@ function handleAddOrder(e) {
     saveData();
     orderForm.reset();
     resetFormTime();
+    // Clear selection style
+    document.querySelectorAll('.resource-option-card').forEach(c => c.classList.remove('selected'));
+
+    // Visual Feedback
+    const submitBtn = orderForm.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.classList.add('btn-success-flash');
+        setTimeout(() => submitBtn.classList.remove('btn-success-flash'), 500);
+    }
+    showToast(`✅ 已新增訂單：${customerName}`);
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Trigger reflow
+    toast.offsetHeight;
+
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
 }
 
 function completeOrder(id) {
@@ -296,6 +395,78 @@ function deleteOrder(id) {
     }
 }
 
+function renderOrders() {
+    if (!orderCount || !orderList) return;
+
+    // Filter orders based on mode
+    const displayOrders = orders.filter(o => {
+        if (isHistoryMode) {
+            return o.status === 'completed';
+        } else {
+            return o.status !== 'completed';
+        }
+    });
+
+    orderCount.textContent = displayOrders.length;
+
+    // Update list header title based on mode
+    const listHeader = document.querySelector('.order-list h2');
+    if (listHeader) {
+        listHeader.textContent = isHistoryMode ? '已完成訂單' : '進行中訂單';
+    }
+
+    if (displayOrders.length === 0) {
+        orderList.innerHTML = `<div class="empty-state">${isHistoryMode ? '沒有歷史紀錄' : '目前沒有進行中的訂單'}</div>`;
+        return;
+    }
+
+    orderList.innerHTML = displayOrders.map(order => {
+        const dateStr = new Date(order.dueTime).toLocaleString('zh-TW', { hour12: false });
+        const durHours = order.duration / 60;
+        const durStr = `${parseFloat(durHours.toFixed(1))} 小時`;
+
+        let actionButtons = '';
+
+        if (isHistoryMode) {
+            // History Mode Buttons
+            actionButtons = `
+                <button onclick="restoreOrder('${order.id}')" class="btn-action btn-restore">還原</button>
+                <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">永久刪除</button>
+            `;
+        } else {
+            // Active Mode Buttons
+            actionButtons = `
+                <button onclick="addDuration('${order.id}')" class="btn-action btn-extend">延時</button>
+                <button onclick="completeOrder('${order.id}')" class="btn-action btn-complete">完成</button>
+                <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">刪除</button>
+            `;
+        }
+
+        return `
+            <div class="order-item ${isHistoryMode ? 'history-item' : ''}">
+                <div class="order-info">
+                    <h3>${order.customerName} <span class="tag">${order.resource}</span></h3>
+                    <div class="order-details">${order.orderDetails}</div>
+                    <div class="order-meta">
+                        <span>工時：${durStr}</span>
+                        <span>預計完成：${dateStr}</span>
+                    </div>
+                </div>
+                <div class="order-actions">
+                    ${!isHistoryMode ? `<div id="timer-${order.id}" class="timer">計算中...</div>` : ''}
+                    <div class="action-buttons">
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (!isHistoryMode) {
+        updateTimers();
+    }
+}
+
 // --- Timer & Notification ---
 
 function formatTimeLeft(ms) {
@@ -307,10 +478,10 @@ function formatTimeLeft(ms) {
     const days = Math.floor(ms / (1000 * 60 * 60 * 24));
 
     const parts = [];
-    if (days > 0) parts.push(`${days}天`);
-    if (hours > 0) parts.push(`${hours}時`);
-    parts.push(`${minutes}分`);
-    parts.push(`${seconds}秒`);
+    if (days > 0) parts.push(`${days} 天`);
+    if (hours > 0) parts.push(`${hours} 時`);
+    parts.push(`${minutes} 分`);
+    parts.push(`${seconds} 秒`);
 
     return parts.join(' ');
 }
@@ -377,7 +548,7 @@ function goToToday() {
 
 function handleZoomInput() {
     timelineZoom = parseInt(zoomSlider.value);
-    zoomValue.textContent = `${timelineZoom}小時`;
+    zoomValue.textContent = `${timelineZoom} 小時`;
     renderTimeline();
 }
 
@@ -389,7 +560,7 @@ function changeZoom(delta) {
     if (newZoom !== timelineZoom) {
         timelineZoom = newZoom;
         zoomSlider.value = timelineZoom;
-        zoomValue.textContent = `${timelineZoom}小時`;
+        zoomValue.textContent = `${timelineZoom} 小時`;
         renderTimeline();
     }
 }
@@ -404,50 +575,9 @@ function handleTimelineWheel(e) {
 
 function updateDateDisplay() {
     const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
-    timelineDateDisplay.textContent = timelineDate.toLocaleDateString('zh-TW', options);
-}
-
-function renderOrders() {
-    if (!orderCount || !orderList) return;
-
-    // Filter active orders
-    const activeOrders = orders.filter(o => o.status !== 'completed');
-    orderCount.textContent = activeOrders.length;
-
-    if (activeOrders.length === 0) {
-        orderList.innerHTML = '<div class="empty-state">目前沒有進行中的訂單</div>';
-        return;
+    if (timelineDateDisplay) {
+        timelineDateDisplay.textContent = timelineDate.toLocaleDateString('zh-TW', options);
     }
-
-    orderList.innerHTML = activeOrders.map(order => {
-        const dateStr = new Date(order.dueTime).toLocaleString('zh-TW', { hour12: false });
-        // Format duration for display
-        const durHours = order.duration / 60;
-        const durStr = `${parseFloat(durHours.toFixed(1))} 小時`;
-
-        return `
-            <div class="order-item">
-                <div class="order-info">
-                    <h3>${order.customerName} <span class="tag">${order.resource}</span></h3>
-                    <div class="order-details">${order.orderDetails}</div>
-                    <div class="order-meta">
-                        <span>工時：${durStr}</span>
-                        <span>預計完成：${dateStr}</span>
-                    </div>
-                </div>
-                <div class="order-actions">
-                    <div id="timer-${order.id}" class="timer">計算中...</div>
-                    <div class="action-buttons">
-                        <button onclick="addDuration('${order.id}')" class="btn-action btn-extend">延時</button>
-                        <button onclick="completeOrder('${order.id}')" class="btn-action btn-complete">完成</button>
-                        <button onclick="deleteOrder('${order.id}')" class="btn-action btn-delete">刪除</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    updateTimers();
 }
 
 function renderTimeline() {
@@ -487,6 +617,10 @@ function renderTimeline() {
             // Check if order overlaps with this day
             const orderStart = order.startTime;
             const orderEnd = order.dueTime;
+
+            // Skip invalid dates
+            if (!orderStart || !orderEnd || isNaN(orderStart) || isNaN(orderEnd)) return;
+
             const dayStart = startTimestamp;
             const dayEnd = startTimestamp + (24 * 60 * 60 * 1000);
 
@@ -532,8 +666,39 @@ function formatTime(ms) {
 window.removeResource = removeResource;
 window.deleteOrder = deleteOrder;
 window.completeOrder = completeOrder;
+window.restoreOrder = restoreOrder;
+window.toggleHistoryMode = toggleHistoryMode;
 window.addDuration = addDuration;
 window.adjustDuration = adjustDuration;
 window.changeDate = changeDate;
 window.goToToday = goToToday;
 window.changeZoom = changeZoom;
+window.addTag = addTag;
+window.selectResource = selectResource;
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    renderResources();
+    renderResourceOptions();
+    requestNotificationPermission();
+
+    // Set default start time to now
+    resetFormTime();
+
+    // Start timer loop
+    setInterval(updateTimers, 1000);
+
+    // Initial render
+    updateDateDisplay();
+    renderTimeline();
+});
+
+// Event Listeners
+if (orderForm) orderForm.addEventListener('submit', handleAddOrder);
+if (addResourceBtn) addResourceBtn.addEventListener('click', addResource);
+if (zoomSlider) {
+    zoomSlider.addEventListener('input', handleZoomInput);
+}
+if (timelineContainer) {
+    timelineContainer.addEventListener('wheel', handleTimelineWheel, { passive: false });
+}

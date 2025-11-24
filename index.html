@@ -10,98 +10,120 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <input type="text" id="newResourceName" placeholder="輸入新資源名稱 (例如: 機台 A)">
-    <button id="addResourceBtn" class="btn-secondary">新增資源</button>
-    </div>
-    <div id="resourceList" class="resource-tags">
-        <!-- Resources will be rendered here -->
-    </div>
-    </div>
-    </section>
+</head>
 
-    <section class="card form-section">
-        <h2>新增訂單</h2>
-        <form id="orderForm">
-            <div class="form-group">
-                <label for="customerName">客戶名稱</label>
-                <input type="text" id="customerName" required placeholder="例如：王小明">
-            </div>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>訂單排程系統</h1>
+            <p class="subtitle">高效管理您的訂單與資源</p>
+            <div id="syncStatus" class="sync-status">☁️ 已同步</div>
+        </header>
 
-            <div class="form-group">
-                <label for="orderDetails">訂單內容</label>
-                <input type="text" id="orderDetails" required placeholder="例如：洗車 + 打蠟">
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="resource">使用資源/機台</label>
-                    <select id="resource" required>
-                        <!-- Populated by JS -->
-                    </select>
+        <main>
+            <!-- Resource Management -->
+            <section class="card resource-section">
+                <h2>資源管理</h2>
+                <div class="input-group">
+                    <input type="text" id="newResourceName" placeholder="輸入新資源名稱 (例如: 機台 A)">
+                    <button id="addResourceBtn" class="btn-secondary">新增資源</button>
                 </div>
-                <div class="form-group">
-                    <label for="duration">預計工時 (輸入 1.5 或 1:30)</label>
-                    <div class="duration-controls">
-                        <input type="text" id="duration" required value="1" placeholder="例如: 1.5 或 1:30">
-                        <div class="quick-btns">
-                            <button type="button" onclick="adjustDuration(1)">+1時</button>
-                            <button type="button" onclick="adjustDuration(5)">+5時</button>
-                            <button type="button" onclick="adjustDuration(10)">+10時</button>
+                <div id="resourceList" class="resource-tags">
+                    <!-- Resources will be rendered here -->
+                </div>
+            </section>
+
+            <!-- Order Form -->
+            <section class="card form-section">
+                <h2>新增訂單</h2>
+                <form id="orderForm">
+                    <div class="form-group">
+                        <label for="customerName">客戶名稱</label>
+                        <input type="text" id="customerName" required placeholder="例如：王小明">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="orderDetails">訂單內容</label>
+                        <input type="text" id="orderDetails" required placeholder="例如：CNC 加工 - 批號 123">
+                        <div class="quick-tags">
+                            <button type="button" class="btn-tag" onclick="addTag('包等級')">包等級</button>
+                            <button type="button" class="btn-tag" onclick="addTag('包時數')">包時數</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>選擇資源 (機台/人員)</label>
+                        <div id="resource-options" class="resource-options-grid">
+                            <!-- Radio buttons injected by JS -->
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="startTime">開始時間</label>
+                            <input type="datetime-local" id="startTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="duration">預估工時 (小時)</label>
+                            <div class="duration-input-group">
+                                <input type="text" id="duration" required placeholder="例如 1.5 或 1:30" value="1">
+                                <div class="quick-duration-buttons">
+                                    <button type="button" onclick="adjustDuration(1)">+1h</button>
+                                    <button type="button" onclick="adjustDuration(5)">+5h</button>
+                                    <button type="button" onclick="adjustDuration(10)">+10h</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">加入排程</button>
+                </form>
+            </section>
+
+            <!-- Timeline Visualization -->
+            <section class="card timeline-section">
+                <div class="section-header">
+                    <h2>視覺化排程</h2>
+                    <div class="timeline-toolbar">
+                        <div class="date-nav">
+                            <button onclick="changeDate(-1)" class="btn-icon">◀</button>
+                            <span id="timelineDateDisplay">2023年11月24日 週五</span>
+                            <button onclick="changeDate(1)" class="btn-icon">▶</button>
+                            <button onclick="goToToday()" class="btn-sm">今天</button>
+                        </div>
+                        <div class="zoom-control">
+                            <label for="zoomSlider">縮放</label>
+                            <input type="range" id="zoomSlider" min="4" max="24" value="12" step="2">
+                            <span id="zoomValue">12小時</span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="startTime">開始時間</label>
-                <input type="datetime-local" id="startTime" required>
-            </div>
-
-            <button type="submit" class="btn-primary">加入排程</button>
-        </form>
-    </section>
-
-    <section class="card timeline-section">
-        <div class="section-header">
-            <h2>視覺化排程</h2>
-            <div class="timeline-toolbar">
-                <div class="date-nav">
-                    <button onclick="changeDate(-1)" class="btn-icon">&lt;</button>
-                    <span id="timelineDateDisplay">2023-11-24</span>
-                    <button onclick="changeDate(1)" class="btn-icon">&gt;</button>
-                    <button onclick="goToToday()" class="btn-sm">今天</button>
+                <div id="timelineContainer" class="timeline-container">
+                    <div id="timelineBody">
+                        <!-- Gantt chart rows -->
+                    </div>
                 </div>
-                <div class="zoom-controls">
-                    <label for="zoomSlider">縮放:</label>
-                    <input type="range" id="zoomSlider" min="4" max="24" step="1" value="12">
-                    <span id="zoomValue">12小時</span>
-                </div>
-            </div>
-        </div>
-        <div class="timeline-container" id="timelineContainer">
-            <div class="timeline-header">
-                <!-- Time markers -->
-            </div>
-            <div id="timelineBody" class="timeline-body">
-                <!-- Gantt chart rows -->
-            </div>
-        </div>
-    </section>
+            </section>
 
-    <section class="card list-section">
-        <div class="list-header">
-            <h2>訂單列表</h2>
-            <span id="orderCount" class="badge">0</span>
-        </div>
-        <div id="orderList" class="order-list">
-            <!-- Orders will be rendered here -->
-            <div class="empty-state">目前沒有進行中的訂單</div>
-        </div>
-    </section>
-    </main>
+            <!-- Order List -->
+            <section class="card list-section">
+                <div class="list-header">
+                    <h2>訂單列表</h2>
+                    <div class="list-controls">
+                        <button id="historyBtn" class="btn-secondary btn-sm" onclick="toggleHistoryMode()">📜
+                            歷史紀錄</button>
+                        <span id="orderCount" class="badge">0</span>
+                    </div>
+                </div>
+                <div id="orderList" class="order-list">
+                    <!-- Orders will be rendered here -->
+                    <div class="empty-state">目前沒有進行中的訂單</div>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script src="app.js"></script>
-    </body>
+</body>
 
 </html>
