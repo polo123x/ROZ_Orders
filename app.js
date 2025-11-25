@@ -53,6 +53,7 @@ async function loadData() {
             }
 
             // Convert timestamps back to numbers if needed
+            let hasMigration = false;
             orders.forEach(o => {
                 let start = Number(o.startTime);
                 if (isNaN(start)) start = new Date(o.startTime).getTime();
@@ -62,8 +63,22 @@ async function loadData() {
                 if (isNaN(due)) due = new Date(o.dueTime).getTime();
                 o.dueTime = due;
 
+                // Data migration: Convert old duration (minutes) to hours
                 o.duration = Number(o.duration);
+                // If duration is suspiciously large (>100), it's likely in minutes
+                if (o.duration > 100) {
+                    console.log(`Migrating duration for order ${o.id}: ${o.duration} minutes -> ${o.duration / 60} hours`);
+                    o.duration = o.duration / 60;
+                    hasMigration = true;
+                }
             });
+
+            // Save migrated data back to cloud
+            if (hasMigration) {
+                console.log('Data migration detected, saving to cloud...');
+                saveData(true);
+            }
+
             renderOrders();
             renderTimeline();
             renderResourceOptions();
@@ -208,14 +223,15 @@ function renderResourceOptions() {
     const activeOrders = orders.filter(o => o.status !== 'completed' && o.startTime <= now && o.dueTime > now);
     const busyResources = activeOrders.map(o => o.resource);
 
-    container.innerHTML = resources.map(r => {
+    container.innerHTML = resources.map((r, index) => {
         const isBusy = busyResources.includes(r);
         const statusClass = isBusy ? 'busy' : 'idle';
         const statusText = isBusy ? '使用中' : '空閒';
+        const isFirst = index === 0;
 
         return `
-        <label class="resource-option-card" onclick="selectResource(this)">
-            <input type="radio" name="resource" value="${r}" required>
+        <label class="resource-option-card${isFirst ? ' selected' : ''}" onclick="selectResource(this)">
+            <input type="radio" name="resource" value="${r}" ${isFirst ? 'checked' : ''} required>
             <span class="resource-name">${r}</span>
             <div class="status-indicator ${statusClass}" title="${statusText}"></div>
         </label>
@@ -323,7 +339,9 @@ function handleAddOrder(e) {
     const resource = selectedResource ? selectedResource.value : null;
 
     if (!resource) {
-        alert('請選擇一個資源 (機台/人員)');
+        alert('⚠️ 請選擇一個資源 (機台/人員)\n\n請在下方選擇要使用的機台或人員');
+        // Scroll to resource selection
+        document.getElementById('resource-options')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
     }
 
@@ -868,13 +886,25 @@ function openOrderModal(orderId) {
     const startTimeStr = new Date(order.startTime).toLocaleString('zh-TW', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const endTimeStr = new Date(order.dueTime).toLocaleString('zh-TW', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+    // Format duration display
+    const hours = Math.floor(order.duration);
+    const minutes = Math.round((order.duration - hours) * 60);
+    let durationDisplay = '';
+    if (hours > 0 && minutes > 0) {
+        durationDisplay = `${hours}小時${minutes}分鐘`;
+    } else if (hours > 0) {
+        durationDisplay = `${hours}小時`;
+    } else {
+        durationDisplay = `${minutes}分鐘`;
+    }
+
     modalBody.innerHTML = `
         <p><strong>客戶名稱:</strong> ${order.customerName}</p>
         <p><strong>訂單內容:</strong> ${order.orderDetails}</p>
         <p><strong>分配資源:</strong> ${order.resource}</p>
         <p><strong>開始時間:</strong> ${startTimeStr}</p>
         <p><strong>結束時間:</strong> ${endTimeStr}</p>
-        <p><strong>預估工時:</strong> ${order.duration} 小時</p>
+        <p><strong>預估工時:</strong> ${durationDisplay}</p>
         ${order.result ? `<p><strong>結果:</strong> ${order.result === 'success' ? '✅ 成功' : '❌ 異常'}</p>` : ''}
     `;
 
