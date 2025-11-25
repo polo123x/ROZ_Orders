@@ -1492,3 +1492,576 @@ input[type="text"]::placeholder {
         font-size: 16px; /* Prevent zoom on iOS */
     }
 }
+
+/* Timeline Grid Lines */
+.timeline-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.grid-line {
+    flex: 1;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.grid-line:first-child {
+    border-left: none;
+}
+
+/* Current Time Indicator */
+.current-time-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.current-time-line::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+/* Timeline Container Improvements */
+.timeline-container {
+    position: relative;
+    min-height: 400px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow: visible;
+}
+
+.timeline-body {
+    position: relative;
+    width: 100%;
+}
+
+/* Timeline Time Axis */
+.timeline-time-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 10;
+}
+
+.time-marker {
+    flex: 1;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Timeline Row */
+.timeline-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 50px;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.timeline-label {
+    width: 100px;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px 0 0 6px;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-right: 2px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.timeline-track {
+    flex: 1;
+    position: relative;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0 6px 6px 0;
+    min-height: 50px;
+}
+
+/* Timeline Block */
+.timeline-block {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 70%;
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    border-radius: 4px;
+    padding: 0.5rem;
+    color: #fff;
+    font-size: 0.85rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.timeline-block:hover {
+    transform: translateY(-50%) scale(1.02);
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+}
+
+.timeline-block.overdue {
+    background: linear-gradient(135deg, var(--danger-color), #dc2626);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+}
+
+/* Empty State */
+.timeline-empty {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Fix Timeline Grid Alignment - Proper Grid System */
+.timeline-time-axis {
+    display: grid;
+    grid-template-columns: repeat(25, 1fr);
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 10;
+}
+
+.time-marker {
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding-left: 2px;
+}
+
+.timeline-grid {
+    position: absolute;
+    top: 60px;
+    left: 100px;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-line {
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    height: 100%;
+}
+
+.grid-line:first-child {
+    border-left: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Current time line positioning */
+.current-time-line {
+    position: absolute;
+    top: 60px;
+    bottom: 0;
+    left: calc(100px + var(--time-percent));
+    width: 2px;
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.current-time-line::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+/* Ensure timeline body has relative positioning */
+.timeline-body {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+}
+
+/* Timeline row positioning */
+.timeline-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 50px;
+    margin-bottom: 0.5rem;
+    position: relative;
+}
+
+.timeline-label {
+    width: 100px;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px 0 0 6px;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-right: 2px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.timeline-track {
+    flex: 1;
+    position: relative;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 0 6px 6px 0;
+    min-height: 50px;
+}
+
+/* Timeline Time Axis - Fixed Grid Alignment */
+.timeline-time-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 10;
+}
+
+.time-marker {
+    flex: 1;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.time-marker:first-child {
+    text-align: left;
+}
+
+.time-marker:last-child {
+    text-align: right;
+}
+
+/* Timeline Grid - Match time markers exactly */
+.timeline-grid {
+    position: absolute;
+    top: 60px;
+    left: 100px;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-line {
+    flex: 1;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+    height: 100%;
+}
+
+.grid-line:first-child {
+    border-left: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Current time line - use percentage positioning */
+.current-time-line {
+    position: absolute;
+    top: 60px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.current-time-line::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+/* Fix Y-axis positioning for grid and current time line */
+.timeline-container {
+    position: relative;
+    min-height: 400px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.timeline-body {
+    position: relative;
+    width: 100%;
+}
+
+/* Grid should start after time axis */
+.timeline-grid {
+    position: absolute;
+    top: 50px;
+    left: 100px;
+    right: 0;
+    height: calc(100% - 50px);
+    display: flex;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-line {
+    flex: 1;
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.grid-line:first-child {
+    border-left: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Current time line should span full height of rows */
+.current-time-line {
+    position: absolute;
+    top: 50px;
+    height: calc(100% - 50px);
+    width: 2px;
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    z-index: 50;
+    pointer-events: none;
+}
+
+.current-time-line::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+/* Ensure rows are positioned correctly */
+.timeline-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 50px;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 10;
+}
+
+/* Complete Timeline Alignment Fix */
+.timeline-time-axis {
+    display: flex;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 10;
+}
+
+.time-marker {
+    flex: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    line-height: 1;
+}
+
+.time-marker:first-child {
+    text-align: left;
+}
+
+.time-marker:last-child {
+    text-align: right;
+}
+
+/* Timeline grid - perfectly aligned with time markers */
+.timeline-grid {
+    position: absolute;
+    top: 45px;
+    left: 100px;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-line {
+    flex: 1;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.grid-line:first-child {
+    border-left: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Current time line */
+.current-time-line {
+    position: absolute;
+    top: 45px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #ef4444, #dc2626);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* ===== FINAL TIMELINE ALIGNMENT FIX ===== */
+/* This overrides all previous timeline styles */
+
+.timeline-container {
+    position: relative !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    overflow: visible !important;
+}
+
+.timeline-body {
+    position: relative !important;
+    width: 100% !important;
+}
+
+/* Time axis */
+.timeline-time-axis {
+    display: flex !important;
+    margin-bottom: 0.5rem !important;
+    padding: 0.5rem 0 !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2) !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.time-marker {
+    flex: 1 !important;
+    text-align: left !important;
+    font-size: 0.7rem !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Grid - exactly matches time markers */
+.timeline-grid {
+    position: absolute !important;
+    top: 40px !important;
+    left: 100px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+.grid-line {
+    flex: 1 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-right: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+}
+
+.grid-line:first-child {
+    border-left: 2px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Current time line */
+.current-time-line {
+    position: absolute !important;
+    top: 40px !important;
+    bottom: 0 !important;
+    width: 2px !important;
+    background: linear-gradient(to bottom, #ef4444, #dc2626) !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
+    z-index: 50 !important;
+    pointer-events: none !important;
+}
+
+.current-time-line::before {
+    content: '' !important;
+    position: absolute !important;
+    top: -4px !important;
+    left: -4px !important;
+    width: 10px !important;
+    height: 10px !important;
+    background: #ef4444 !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8) !important;
+}
+
+/* Timeline rows */
+.timeline-row {
+    display: flex !important;
+    min-height: 50px !important;
+    margin-bottom: 0.5rem !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.timeline-label {
+    width: 100px !important;
+    padding: 0.75rem !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 6px 0 0 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    font-weight: 500 !important;
+    color: var(--text-primary) !important;
+    border-right: 2px solid rgba(255, 255, 255, 0.1) !important;
+    flex-shrink: 0 !important;
+}
+
+.timeline-track {
+    flex: 1 !important;
+    position: relative !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 0 6px 6px 0 !important;
+    min-height: 50px !important;
+}
+
+.timeline-block {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    height: 70% !important;
+}

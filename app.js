@@ -341,14 +341,16 @@ function handleAddOrder(e) {
     const startTime = new Date(startTimeStr).getTime();
     const dueTime = startTime + (durationInMinutes * 60 * 1000);
 
+    // Convert minutes to hours for storage
+    const durationInHours = durationInMinutes / 60;
+
     const newOrder = {
         id: Date.now().toString(),
         customerName,
         orderDetails,
         resource,
         startTime,
-        duration: durationInMinutes,
-        dueTime,
+        duration: durationInHours,  // Store as hours
         dueTime,
         notified: false,
         status: 'active' // Default status
@@ -485,8 +487,18 @@ function renderOrders() {
 
     orderList.innerHTML = displayOrders.map(order => {
         const dateStr = new Date(order.dueTime).toLocaleString('zh-TW', { hour12: false });
-        const durHours = order.duration;
-        const durStr = `${parseFloat(durHours.toFixed(1))} 小時`;
+
+        // Format duration: show hours and minutes
+        const hours = Math.floor(order.duration);
+        const minutes = Math.round((order.duration - hours) * 60);
+        let durStr = '';
+        if (hours > 0 && minutes > 0) {
+            durStr = `${hours}小時${minutes}分鐘`;
+        } else if (hours > 0) {
+            durStr = `${hours}小時`;
+        } else {
+            durStr = `${minutes}分鐘`;
+        }
 
         let actionButtons = '';
 
@@ -650,87 +662,77 @@ function renderTimeline() {
     const startOfDay = new Date(timelineDate);
     startOfDay.setHours(0, 0, 0, 0);
     const startTimestamp = startOfDay.getTime();
-
-    // Zoom logic:
-    // Calculate scale factor: 24 / zoom
-    const scaleFactor = 24 / timelineZoom;
-    timelineContainer.style.setProperty('--scale-factor', scaleFactor);
+    const endTimestamp = startTimestamp + (24 * 60 * 60 * 1000);
 
     let html = '';
 
-    // Time Axis
-    html += `<div class="timeline-time-axis">`;
-    for (let i = 0; i <= 24; i++) {
-        html += `<div class="time-marker">${i.toString().padStart(2, '0')}</div>`;
+    // Create grid-based timeline header with current hour highlighting
+    html += `<div class="timeline-header">`;
+    html += `<div class="timeline-header-label">客戶</div>`;
+    html += `<div class="timeline-header-hours">`;
+
+    // Get current hour for highlighting
+    const now = new Date();
+    const currentHourNum = now.getHours();
+    const isToday = startOfDay.getTime() === new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    for (let i = 0; i < 24; i++) {
+        const isCurrentHour = isToday && i === currentHourNum;
+        const currentClass = isCurrentHour ? ' current-hour' : '';
+        html += `<div class="hour-cell${currentClass}">${i.toString().padStart(2, '0')}</div>`;
     }
-    html += '</div>';
+    html += `</div></div>`;
 
     // Rows per Customer (Group by Customer)
-    // Get unique customers with active orders
     const activeOrders = orders.filter(o => o.status !== 'completed');
-    const uniqueCustomers = [...new Set(activeOrders.map(o => o.customerName))].sort();
 
-    if (uniqueCustomers.length === 0) {
-        html += `<div class="timeline-row"><div class="timeline-label" style="width: 100%; text-align: center; padding: 1rem;">尚無進行中的訂單</div></div>`;
-    }
+    if (activeOrders.length === 0) {
+        html += `<div class="timeline-empty">尚無進行中的訂單</div>`;
+    } else {
+        // Group by customer
+        const uniqueCustomers = [...new Set(activeOrders.map(o => o.customerName))].sort();
 
-    uniqueCustomers.forEach(customer => {
-        // Filter active orders for this customer
-        const customerOrders = activeOrders.filter(o => o.customerName === customer);
+        uniqueCustomers.forEach(customer => {
+            const customerOrders = activeOrders.filter(o => o.customerName === customer);
 
-        html += `
-            <div class="timeline-row">
-                <div class="timeline-label">${customer}</div>
-                <div class="timeline-track">
-        `;
+            html += `<div class="timeline-row-grid">`;
+            html += `<div class="row-label">${customer}</div>`;
+            html += `<div class="row-hours">`;
 
-        customerOrders.forEach(order => {
-            // Check if order overlaps with this day
-            const orderStart = order.startTime;
-            const orderEnd = order.dueTime;
-
-            // Skip invalid dates
-            if (!orderStart || !orderEnd || isNaN(orderStart) || isNaN(orderEnd)) return;
-
-            const dayStart = startTimestamp;
-            const dayEnd = startTimestamp + (24 * 60 * 60 * 1000);
-
-            if (orderEnd < dayStart || orderStart > dayEnd) return;
-
-            // Calculate position within the day
-            // 0% = 00:00, 100% = 24:00
-            const totalDayDuration = 24 * 60 * 60 * 1000;
-
-            let startPercent = ((orderStart - dayStart) / totalDayDuration) * 100;
-            let widthPercent = ((orderEnd - orderStart) / totalDayDuration) * 100;
-
-            // Clip
-            if (startPercent < 0) {
-                widthPercent += startPercent;
-                startPercent = 0;
-            }
-            if (startPercent + widthPercent > 100) {
-                widthPercent = 100 - startPercent;
+            // Create 24 hour cells
+            for (let h = 0; h < 24; h++) {
+                html += `<div class="hour-slot"></div>`;
             }
 
-            const isOverdue = order.dueTime < Date.now() && order.status !== 'completed';
-            const overdueClass = isOverdue ? 'overdue' : '';
+            // Add order blocks
+            customerOrders.forEach(order => {
+                const orderStart = order.startTime;
+                const orderEnd = order.dueTime;
 
-            html += `
-                <div class="timeline-block ${overdueClass}" 
-                     style="left: ${startPercent}%; width: ${widthPercent}%; cursor: pointer;" 
-                     title="點擊查看詳情"
-                     onclick="openOrderModal('${order.id}')">
-                    ${order.resource} - ${order.orderDetails}
-                </div>
-            `;
+                if (!orderStart || !orderEnd || isNaN(orderStart) || isNaN(orderEnd)) return;
+                if (orderEnd < startTimestamp || orderStart > endTimestamp) return;
+
+                // Calculate grid position (in hours)
+                const startHour = Math.max(0, (orderStart - startTimestamp) / (60 * 60 * 1000));
+                const endHour = Math.min(24, (orderEnd - startTimestamp) / (60 * 60 * 1000));
+                const duration = endHour - startHour;
+
+                const isOverdue = order.dueTime < Date.now() && order.status !== 'completed';
+                const overdueClass = isOverdue ? 'overdue' : '';
+
+                html += `
+                    <div class="order-block ${overdueClass}" 
+                         style="--start-hour: ${startHour}; --duration: ${duration};"
+                         title="${order.resource} - ${order.orderDetails}"
+                         onclick="openOrderModal('${order.id}')">
+                        ${order.resource}
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
         });
-
-        html += `
-                </div>
-            </div>
-        `;
-    });
+    }
 
     timelineBody.innerHTML = html;
 }
@@ -811,7 +813,7 @@ function initScrollSpy() {
                 const id = entry.target.getAttribute('id');
                 navLinks.forEach(link => {
                     link.classList.remove('active');
-                    if (link.getAttribute('href') === `#${id}`) {
+                    if (link.getAttribute('href') === `#${id} `) {
                         link.classList.add('active');
                     }
                 });
