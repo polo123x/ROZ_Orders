@@ -6,11 +6,16 @@
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px;
     padding: 1rem;
+    overflow-x: auto;
+    /* Enable horizontal scroll */
+    overflow-y: visible;
 }
 
 .timeline-body {
     position: relative;
     width: 100%;
+    min-width: 800px;
+    /* Minimum width to prevent compression */
 }
 
 /* Timeline header with grid */
@@ -32,6 +37,8 @@
     display: grid;
     grid-template-columns: repeat(24, 1fr);
     gap: 0;
+    min-width: 680px;
+    /* Ensure readable hour cells */
 }
 
 .hour-cell {
@@ -41,6 +48,8 @@
     padding: 0.25rem 0;
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    min-width: 28px;
+    /* Minimum width per hour cell */
 }
 
 .hour-cell:first-child {
@@ -65,7 +74,7 @@
     margin-bottom: 0.5rem;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 6px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .row-label {
@@ -76,6 +85,9 @@
     font-weight: 500;
     color: var(--text-primary);
     border-right: 2px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    left: 0;
+    z-index: 5;
 }
 
 .row-hours {
@@ -83,11 +95,14 @@
     display: grid;
     grid-template-columns: repeat(24, 1fr);
     gap: 0;
+    min-width: 680px;
+    /* Match header width */
 }
 
 .hour-slot {
     border-left: 1px solid rgba(255, 255, 255, 0.05);
     min-height: 50px;
+    min-width: 28px;
 }
 
 .hour-slot:first-child {
@@ -135,4 +150,70 @@
     padding: 3rem;
     color: var(--text-secondary);
     font-size: 1.1rem;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .timeline-container {
+        padding: 0.5rem;
+    }
+
+    .timeline-body {
+        min-width: 900px;
+        /* Wider on mobile for better readability */
+    }
+
+    .timeline-header-hours,
+    .row-hours {
+        min-width: 780px;
+        /* Wider hour cells on mobile */
+    }
+
+    .hour-cell,
+    .hour-slot {
+        min-width: 32px;
+        /* Slightly wider for touch targets */
+    }
+
+    .row-label {
+        font-size: 0.85rem;
+        padding: 0.5rem;
+        min-width: 100px;
+    }
+
+    .order-block {
+        font-size: 0.75rem;
+        padding: 0.3rem;
+    }
+
+    /* Show scroll hint */
+    .timeline-container::after {
+        content: '← 左右滑動查看完整時間軸 →';
+        position: sticky;
+        left: 50%;
+        transform: translateX(-50%);
+        display: block;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        opacity: 0.7;
+        pointer-events: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .timeline-header-label {
+        font-size: 0.85rem;
+        padding: 0.3rem;
+    }
+
+    .hour-cell {
+        font-size: 0.65rem;
+    }
+
+    .row-label {
+        font-size: 0.8rem;
+        min-width: 80px;
+    }
 }
